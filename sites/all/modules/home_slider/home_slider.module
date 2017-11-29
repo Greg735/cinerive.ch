@@ -1,0 +1,511 @@
+<?php
+
+/*
+ * OXIMA
+ * Created by Gregory Paccaud on 25.06.2015
+ *
+ * http://www.oxima.ch
+ */
+
+/**
+* Implements hook_block_info().
+*/
+function home_slider_block_info() {
+	$blocks = array();
+
+	$blocks['slider_home'] = array(
+    	'info' => t('Home Slider Events'),
+	);
+	
+	$blocks['slider_home_contests'] = array(
+    	'info' => t('Home Slider contests'),
+	);
+	$blocks['event_saison_poster'] = array(
+    	'info' => t('Event saison poster /home_slider.module'),
+	);  
+	return $blocks;
+}
+
+/**
+* Implements hook_block_view().
+*/
+function home_slider_block_view($delta = '') {
+	$blocks = array();
+
+  switch($delta) {
+    case 'slider_home' :
+      $block['content'] = slider_home_view();
+      break;
+	  
+	  case 'slider_home_contests' :
+      $block['content'] = slider_home_contests_view();
+      break;
+	  case 'event_saison_poster' :
+      $block['content'] = event_saison_poster_view();
+      break;
+  
+  }
+  
+  return $block;
+}
+
+function slider_home_view() {
+  global $language;
+  
+  $node = menu_get_object();
+  
+  //$sql = "select nid from node where promoted = 1 and status= 0";
+  
+	$sql_result = db_select('node', 'n')
+//	->condition('type', 'event', 'LIKE')
+	->condition('promote', 1, '=')
+	->condition('status', 1, '=')
+	->condition(
+		db_or()
+		->condition('type', 'event', 'LIKE')
+		->condition('type','saisons', 'LIKE')
+		->condition('type','page', 'LIKE')
+		->condition('type','ev_nements_priv_s', 'LIKE')
+	)
+	->fields('n')
+	->orderBy("n.created", "DESC")
+	->execute();
+	
+	$height = '380px';
+	$width = '676px';	 
+
+  $result = '<script>
+jQuery(document).ready(function ($) {
+  var _SlideshowTransitions = [{
+    // Fade.
+    $Duration: 888,
+    $fade: true,
+    $Opacity: 2
+  }];
+
+  var _CaptionTransitions = [];
+  _CaptionTransitions["S"] = {
+    $Duration: 666,
+    $Opacity: 2
+  };
+
+  var options = {
+    $SlideshowOptions: {
+      $Class: $JssorSlideshowRunner$,
+      $Transitions: _SlideshowTransitions
+    },
+
+    $FillMode: 2,
+    $LazyLoading: 2,
+    $AutoPlay: true,
+    $AutoPlayInterval: 6969,
+
+    $SlideDuration: 577,
+    $MinDragOffsetToSlide: 25,
+
+    $CaptionSliderOptions: {
+      $Class: $JssorCaptionSlider$,
+      $CaptionTransitions: _CaptionTransitions,
+      $PlayInMode: 1,
+      $PlayOutMode: 3
+    },
+
+    $BulletNavigatorOptions: {
+      $Class: $JssorBulletNavigator$,
+      $ChanceToShow: 2,
+      $AutoCenter: 1
+    }
+  };
+
+  var jssor_slider1 = new $JssorSlider$("slider1_container", options);
+
+  // responsive code begin
+  // you can remove responsive code if you do not want the slider scales while window resizes
+ /* function ScaleSlider() {
+    var bodyWidth = document.body.clientWidth;
+    if (bodyWidth){
+      //jssor_slider1.$ScaleWidth(Math.min((bodyWidth-24), 676));
+      //console.log(bodyWidth);
+    }else
+      window.setTimeout(ScaleSlider, 30);
+  }*/
+  
+    function ScaleSlider() {
+        var refSize = jssor_slider1.$Elmt.parentNode.clientWidth;
+              //console.log(refSize);
+
+        if (refSize) {
+	        if(refSize <= 290){
+		            var bodyWidth = document.body.clientWidth ;
+//				jssor_slider1.$ScaleWidth(bodyWidth);
+
+            	refSize = Math.min(bodyWidth, 480);
+				jssor_slider1.$ScaleWidth(bodyWidth-50);
+				
+		    }else{
+            	refSize = Math.min(refSize, 676);
+				jssor_slider1.$ScaleWidth(refSize);
+            }
+        }
+        else {
+            window.setTimeout(ScaleSlider, 30);
+        }
+    }
+              
+  ScaleSlider();
+
+  $(window).bind("load", ScaleSlider);
+  $(window).bind("resize", ScaleSlider);
+  $(window).bind("orientationchange", ScaleSlider);
+  // responsive code end
+});
+</script>
+
+<div id="slider1_container">
+
+<!-- Loading Screen -->
+<div u="loading" class="loading">
+  <div style="filter: alpha(opacity=70); opacity: 0.7; position: absolute; display: block;
+    top: 0px; left: 0px; width: 100%; height: 100%; ">
+  </div>
+  <div style="position: absolute; display: block;
+    background: url(/sites/all/themes/cinerive/img/slider/loading.gif) no-repeat center center;
+    top: 0px; left: 0px; width: 100%; height: 100%; ">
+  </div>
+</div>
+<div u="slides" style="cursor: move; position: absolute; left: 0px; top: 0px; width: '.$width.';
+  height: '.$height.'; overflow: hidden; ">
+';
+  foreach ($sql_result as $row) {
+	$node = node_load($row->nid);
+	//print_r($row);
+	if(empty($node->field_date['und'][0]['value2']) || strtotime($node->field_date['und'][0]['value2'])> strtotime("today")){
+        foreach (field_get_items('node', $node, 'field_event_affiche') as $item) {
+    	 // $fc = field_collection_field_get_entity($item);	
+    	 
+    	 	$file = file_load($item['fid']);
+    		$image = image_load($file->uri);
+    		
+        //$field_collection = field_collection_field_get_entity($item);	
+        //print_r($field_collection);
+        //$image = image_load(file_load($field_collection->field_slider_images['und'][0]['fid'])->uri);
+        $content = array(
+          'file' => array(
+            '#theme' => 'image_style',
+            '#style_name' => 'full',
+            '#path' => $image->source,
+            '#width' => $image->info['width'],
+            '#height' => $image->info['height'],
+          ),
+        );
+        $image = drupal_render($content);
+    
+        $subtitle = '';
+        if (!empty($field_collection->field_slider_description)) {
+          $subtitle = $field_collection->field_slider_description['und'][0]['value'];
+        }
+    	// get link
+    	$alias = drupal_get_path_alias('node/'.$node->nid);
+    
+    	
+        // Build HTML from field_collection infos.
+        $result .= '  <div><a href="'.$alias.'">'  . $image . '</a>
+    
+      </div>
+    ';
+      }
+  }
+}
+  $result .= '</div>
+
+<!--#region Bullet Navigator Skin Begin -->
+<!-- Help: http://www.jssor.com/development/slider-with-bullet-navigator-jquery.html -->
+<style>
+  /* jssor slider bullet navigator skin 21 css */
+  /*
+  .jssorb21 div       (normal)
+  .jssorb21 div:hover (normal mouseover)
+  .jssorb21 .av       (active)
+  .jssorb21 .av:hover (active mouseover)
+  .jssorb21 .dn       (mousedown)
+  */
+  .jssorb21 {
+	  /*display:none;*/
+    position: absolute;
+    top:384px;
+   /* background: rgba(184,184,184,0.5);
+	outline: 4px solid rgba(184,184,184,0.5);*/
+  }
+  .jssorb21 div, .jssorb21 div:hover, .jssorb21 .av {
+    position: absolute;
+    /* size of bullet elment */
+    width: 19px;
+    height: 19px;
+    text-align: center;
+    line-height: 19px;
+    color: white;
+    font-size: 12px;
+    background: url(/sites/all/themes/cinerive/img/slider/b21.png) no-repeat;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .jssorb21 div { background-position: -5px -5px; }
+  .jssorb21 div:hover, .jssorb21 .av:hover { background-position: -35px -5px; }
+  .jssorb21 .av { background-position: -65px -5px; }
+  .jssorb21 .dn, .jssorb21 .dn:hover { background-position: -95px -5px; }
+</style>
+<!-- bullet navigator container -->
+<div u="navigator" class="jssorb21">
+  <!-- bullet navigator item prototype -->
+  <div u="prototype"></div>
+</div>
+<!--#endregion Bullet Navigator Skin End -->
+
+</div>
+';
+
+  return $result;
+}
+
+
+function slider_home_contests_view() {
+  global $language;
+  
+  //$node = menu_get_object();
+  
+  //$sql = "select nid from node where type = 'concours' and promoted = 1";
+  
+	$sql_result = db_select('node', 'n')
+	->condition('type', 'concours', 'LIKE')
+	//->condition('promote', 1, '=')
+	->fields('n')
+	->execute();
+	 
+
+  $result = '<script type="text/javascript">
+        jQuery(document).ready(function ($) {
+
+  var _SlideshowTransitions = [{
+    // Fade.
+    $Duration: 888,
+    $fade: true,
+    $Opacity: 2
+  }];
+
+  var _CaptionTransitions = [];
+  _CaptionTransitions["S"] = {
+    $Duration: 666,
+    $Opacity: 2
+  };
+
+  var options = {
+    $SlideshowOptions: {
+      $Class: $JssorSlideshowRunner$,
+      $Transitions: _SlideshowTransitions
+    },
+
+    $FillMode: 2,
+    $LazyLoading: 2,
+    $AutoPlay: true,
+    $AutoPlayInterval: 6969,
+
+    $SlideDuration: 577,
+    $MinDragOffsetToSlide: 25,
+
+    $CaptionSliderOptions: {
+      $Class: $JssorCaptionSlider$,
+      $CaptionTransitions: _CaptionTransitions,
+      $PlayInMode: 1,
+      $PlayOutMode: 3
+    },
+
+    $BulletNavigatorOptions: {
+      $Class: $JssorBulletNavigator$,
+      $ChanceToShow: 2,
+      $AutoCenter: 1
+    }
+  };
+
+  var jssor_slider1 = new $JssorSlider$("slider2_container", options);
+  
+     function ScaleSlider() {
+        var refSize = jssor_slider1.$Elmt.parentNode.clientWidth;
+        if (refSize) {
+            refSize = Math.min(refSize, 380);
+            jssor_slider1.$ScaleWidth(refSize);
+        }
+        else {
+            window.setTimeout(ScaleSlider, 30);
+        }
+    }
+              
+  ScaleSlider();
+
+  $(window).bind("load", ScaleSlider);
+  $(window).bind("resize", ScaleSlider);
+  $(window).bind("orientationchange", ScaleSlider);
+  // responsive code end
+   
+        });
+    </script>
+    
+
+<div id="slider2_container">
+
+<!-- Loading Screen -->
+<div u="loading" class="loading">
+  <div style="filter: alpha(opacity=70); opacity: 0.7; position: absolute; display: block;
+    top: 0px; left: 0px; width: 100%; height: 100%; ">
+  </div>
+  <div style="position: absolute; display: block;
+    background: url(/sites/all/themes/cinerive/img/slider/loading.gif) no-repeat center center;
+    top: 0px; left: 0px; width: 100%; height: 100%; ">
+  </div>
+</div>
+<div u="slides" style="cursor: move; position: absolute; left: 0px; top: 0px; width: 380px;
+  height: 380px; overflow: hidden; ">';
+  foreach ($sql_result as $row) {
+	$node = node_load($row->nid);
+
+    foreach (field_get_items('node', $node, 'field_image_slider') as $item) {
+	 // $fc = field_collection_field_get_entity($item);	
+	 
+	 	$file = file_load($item['fid']);
+		$image = image_load($file->uri);
+		
+    //$field_collection = field_collection_field_get_entity($item);	
+    //print_r($field_collection);
+    //$image = image_load(file_load($field_collection->field_slider_images['und'][0]['fid'])->uri);
+    $content = array(
+      'file' => array(
+        '#theme' => 'image_style',
+        '#style_name' => 'concours',
+        '#path' => $image->source,
+        '#width' => $image->info['width'],
+        '#height' => $image->info['height'],
+      ),
+    );
+    $image = drupal_render($content);
+
+    $subtitle = '';
+    if (!empty($field_collection->field_slider_description)) {
+      $subtitle = $field_collection->field_slider_description['und'][0]['value'];
+    }
+	// get link
+	$alias = $node->field_lien_facebook[LANGUAGE_NONE][0]['value'];
+	
+    // Build HTML from field_collection infos.
+    $result .= '  <div><a href="'.$alias.'" target="_blank">'  . $image . '</a>
+
+  </div>
+';
+  }
+}
+  $result .= '</div>
+
+<!--#region Bullet Navigator Skin Begin -->
+<!-- Help: http://www.jssor.com/development/slider-with-bullet-navigator-jquery.html -->
+<style>
+
+        /* jssor slider bullet navigator skin 01 css */
+        /*
+        .jssorb01 div           (normal)
+        .jssorb01 div:hover     (normal mouseover)
+        .jssorb01 .av           (active)
+        .jssorb01 .av:hover     (active mouseover)
+        .jssorb01 .dn           (mousedown)
+        */
+ /*
+  .jssorb01 div       (normal)
+  .jssorb01 div:hover (normal mouseover)
+  .jssorb01 .av       (active)
+  .jssorb01 .av:hover (active mouseover)
+  .jssorb01 .dn       (mousedown)
+  */
+  .jssorb01 {
+    /*display:none;*/
+    position: absolute;
+    top:384px;
+    /*background: rgba(184,184,184,0.5);
+  outline: 4px solid rgba(184,184,184,0.5);*/
+  }
+  .jssorb01 div, .jssorb01 div:hover, .jssorb01 .av {
+    position: absolute;
+    /* size of bullet elment */
+    width: 19px;
+    height: 19px;
+    text-align: center;
+    line-height: 19px;
+    color: white;
+    font-size: 12px;
+    background: url(/sites/all/themes/cinerive/img/slider/b21.png) no-repeat;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .jssorb01 div { background-position: -5px -5px; }
+  .jssorb01 div:hover, .jssorb01 .av:hover { background-position: -35px -5px; }
+  .jssorb01 .av { background-position: -65px -5px; }
+  .jssorb01 .dn, .jssorb01 .dn:hover { background-position: -95px -5px; }
+</style>
+<!-- bullet navigator container -->
+<div u="navigator" class="jssorb01" ">
+  <!-- bullet navigator item prototype -->
+  <div u="prototype"></div>
+</div>
+<!--#endregion Bullet Navigator Skin End -->
+
+</div>
+';
+
+  return $result;
+}
+
+
+function event_saison_poster_view(){
+	$node = menu_get_object();
+	//print_r($node);
+	$render = '';
+	$source = '';
+	
+	//check if trailer
+    if(isset($node->field_trailer_url[LANGUAGE_NONE])):
+    	if($node->field_trailer_url[LANGUAGE_NONE][0]['value'] != ''):
+			$source = $node->field_trailer_url[LANGUAGE_NONE][0]['value'];
+		endif;
+    endif;
+    if($source != ''):
+    	$render .= '<div class="field field-name-field-img-url field-type-text field-label-above">
+<a class="youtube cboxElement" id="openColorbox">
+              <div style="display:none">
+                <div id="inlinevideocontent">';
+                  if(strpos($source, 'vimeo')!== false){ 
+                    $array = explode("/", $source);
+                    $code = end($array);
+                    $render .= '<iframe frameborder="0" allowfullscreen="" mozallowfullscreen="" webkitallowfullscreen="" src="https://player.vimeo.com/video/'.$code.'"></iframe>';
+                  } 
+
+        $render .= '</div>
+              </div>';
+	endif;
+    if(isset($node->field_affiche[LANGUAGE_NONE])): 
+
+        $file = file_load($node->field_affiche[LANGUAGE_NONE][0]['fid']);
+        $image = image_load($file->uri);
+        
+        $content = array(
+          'file' => array(
+            '#theme' => 'image_style',
+            '#style_name' => 'poster',
+            '#path' => $image->source,
+            '#width' => $image->info['width'],
+            '#height' => $image->info['height'],
+          ),
+        );
+        $render .= drupal_render($content); 
+	endif;
+    if(isset($source)):
+       	$render .= '</a></div>';	
+	endif;
+	
+	return $render;
+}

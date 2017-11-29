@@ -1,0 +1,15 @@
+name = Cinerive
+description = Divers functions for Cinerive 
+package = Cinerive
+core = 7.x
+
+configure = admin/cinerive/cinerive
+
+files[] = cineshop.module
+
+; Informations
+version = "7.x-1.0"
+core = "7.x"
+;project = "cinerive"
+datestamp = "1434624992"
+

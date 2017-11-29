@@ -1,0 +1,4 @@
+name = Home Slider
+description = "Manage home slider"
+package = "Cinérive-Custom"
+core = 7.x

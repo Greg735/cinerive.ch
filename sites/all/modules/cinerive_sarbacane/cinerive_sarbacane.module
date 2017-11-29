@@ -1,0 +1,36 @@
+<?php
+/**
+ * Version 1.1
+ * Date: 14.03.2017
+ * Cinerive - Module functions sarbacane newsletter
+ */
+function cinerive_sarbacane_post($url, $data) {
+   $fields = '';
+   foreach($data as $key => $value) {
+      $fields .= $key . '=' . $value . '&';
+   }
+   rtrim($fields, '&');
+
+   $post = curl_init();
+   curl_setopt($post, CURLOPT_URL, $url);
+   curl_setopt($post, CURLOPT_POST, count($data));
+   curl_setopt($post, CURLOPT_POSTFIELDS, $fields);
+   curl_setopt($post, CURLOPT_RETURNTRANSFER, 1);
+
+   $result = curl_exec($post);
+
+   curl_close($post);
+}
+
+/*
+// On récupère les valeurs à envoyer
+$url = "https://api-sd.sarbacane.com/lists/325/7CsS69R44UaSy7TazcRLMw";
+$email = $_POST["email"];
+
+$data=array(
+    'action' => 'INSERT',
+    'Email' => $email
+);
+
+//Envoi des données
+post_to_url($url, $data);

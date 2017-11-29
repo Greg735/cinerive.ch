@@ -1,0 +1,371 @@
+<?php
+/**
+ * Version 1.1
+ * Date: 14.03.2017
+ * Cinerive - Module functions
+ */
+
+global $dolpineURL;
+global $urlCompl;
+
+function intit(){
+    $dolpineURL = "http://ticketonline.cinerive.com:11718/1.0/";
+    $urlCompl= "?apikey=c1n3R1v3$Rex&language=fr";
+    return true;
+}
+function getVersionName($movid=null, $showversion="VF"){    
+    if($node = node_load($movid)){
+        if (strpos($showversion, 'VO')!==false) {
+            //field_originalname title        
+            return  $node->field_originalname['und'][0]['value'];
+        }else{
+             return  $node->title;   
+            }
+    }
+    else{
+        return  "";   
+    }
+}
+
+function getCity($nid=null, $sep =" "){
+    $query = db_select('node', 'n')
+        ->fields('n', array('nid'))
+        ->condition('n.type', 'shows');
+    $result = $query->execute();
+
+    $listeSite = array();
+    $listcity = "";
+    $devList = array();
+    foreach ($result as $row) {
+         if ($node = node_load($row->nid)) {
+             if(isset($node->field_eventid['und'])){
+                $devList['eventid'][] = $node->field_eventid['und'];    
+             }             
+             if(isset($node->field_eventid['und']) && $node->field_eventid['und'][0]['nid'] == $nid){
+                 $devList['siteid'][] = $node->field_siteid['und'][0]['nid'];
+                 if(isset($node->field_salestart['und'][0]['value'])){
+                     $debut = $node->field_salestart['und'][0]['value'];
+                 }                 
+                 
+                 if ($node->field_saleend['und'][0]['value'] >= date("Y-m-d H:i")){          
+                     if(isset($node->field_siteid['und'][0]['nid']) ) {     
+                        $query2 = db_select('node', 's')
+                            ->fields('s', array('nid'))
+                            ->condition('s.type', 'site')
+                            ->condition('s.nid', $node->field_siteid['und'][0]['nid']);
+                        $resSite = $query2->execute();
+                         
+                         foreach ($resSite as $row) {
+                             if ($node2 = node_load($row->nid)) {
+                                    //dpm($node2);                                       
+                                    $listeSite[$node2->field_cityname['und'][0]['safe_value']]= $node2->field_cityname['und'][0]['value'];                         
+                             }
+                         }
+                    }
+                 }
+             }
+        }   
+    }    
+    $cityarray = array();
+    
+    foreach ($listeSite as $site) {
+        $listcity .= $site . $sep;
+        $cityarray[] = $site;
+    }
+     
+    //$movie = node_load($nid); 
+    //dpm($devList);
+    if(strlen($listcity)>0){
+        return substr($listcity, 0, strlen($listcity)-strlen($sep));   //serialize ($cityarray); //
+    }
+    else{
+        return "no city";
+        // (for movie->nid: " . $nid . ")"
+    }
+}
+
+/*get city list in english*/
+
+function getCityEng($nid=null, $sep =" "){
+    $query = db_select('node', 'n')
+        ->fields('n', array('nid'))
+        ->condition('n.type', 'shows');
+    $result = $query->execute();
+    //$debugList = "DEBUG: ";
+    $listeSite = array();
+    $listcity = "";
+    $devList = array();
+    foreach ($result as $row) {
+         if ($node = node_load($row->nid)) {
+             if(isset($node->field_eventid['und'])){
+                $devList['eventid'][] = $node->field_eventid['und'];    
+             }             
+             if(isset($node->field_eventid['und']) && $node->field_eventid['und'][0]['nid'] == $nid && isset($node->field_languageversion["und"][0]["value"]) && (strpos(strtoupper($node->field_languageversion["und"][0]["value"]), "EN")!==false || strpos(strtoupper($node->field_languageversion["und"][0]["value"]), "EDF")!==false )){ 
+                 //dpm($node); 
+                 //$debugList .= $node->title . " | " . $node->field_languageversion['und'][0]['value'] . " | " .$node->field_siteid['und'][0]['nid'] . " pos=" .strpos(strtoupper($node->field_languageversion["und"][0]["value"]), "EN"). "\r\n"; 
+                 $devList['siteid'][] = $node->field_siteid['und'][0]['nid'];
+                 if(isset($node->field_salestart['und'][0]['value'])){
+                     $debut = $node->field_salestart['und'][0]['value'];
+                 }                 
+                 
+                 if ($node->field_saleend['und'][0]['value'] >= date("Y-m-d H:i")){          
+                     if(isset($node->field_siteid['und'][0]['nid']) ) {     
+                        $query2 = db_select('node', 's')
+                            ->fields('s', array('nid'))
+                            ->condition('s.type', 'site')
+                            ->condition('s.nid', $node->field_siteid['und'][0]['nid']);
+                        $resSite = $query2->execute();
+                         
+                         foreach ($resSite as $row) {
+                             if ($node2 = node_load($row->nid)) {
+                                    //dpm($node2);                                       
+                                    $listeSite[$node2->field_cityname['und'][0]['safe_value']]= $node2->field_cityname['und'][0]['value'];                         
+                             }
+                         }
+                    }
+                 }
+             }
+        }   
+    }    
+    $cityarray = array();
+    //dpm($debugList);
+    foreach ($listeSite as $site) {
+        $listcity .= $site . $sep;
+        $cityarray[] = $site;
+    }
+     
+    //$movie = node_load($nid); 
+    //dpm($devList);
+    if(strlen($listcity)>0){
+        return substr($listcity, 0, strlen($listcity)-strlen($sep));   //serialize ($cityarray); //
+    }
+    else{
+        return "no city";
+        // (for movie->nid: " . $nid . ")"
+    }
+}
+function getDayshow($nid=null, $sep =" "){
+    $query = db_select('node', 'n')
+        ->fields('n', array('nid'))
+        ->condition('n.type', 'shows');
+    $result = $query->execute();
+
+    $listeLang = array();
+    $listLangStr = "";
+    $devList = array();
+    foreach ($result as $row) {
+         if ($node = node_load($row->nid)) {
+             /*if(isset($node->field_eventid['und'])){
+                $devList['eventid'][] = $node->field_eventid['und'];    
+             }     */        
+             if(isset($node->field_eventid['und']) && $node->field_eventid['und'][0]['nid'] == $nid){                        
+                 if ($node->field_saleend['und'][0]['value'] >= date("Y-m-d H:i")){          
+                     //dpm($node);
+                     if(isset($node->field_showtime['und'][0]['value'])){
+                        $newString = $node->field_showtime['und'][0]['value'];
+                        $newString = date("d-m-Y", strtotime($newString));
+                        $listeLang[$newString] = $newString;
+                     }
+                 }
+             }
+        }   
+    }    
+   
+    foreach ($listeLang as $Lang) {
+        $listLangStr .= $Lang . $sep;
+    }
+     
+    //$movie = node_load($nid); 
+    //dpm($devList);
+    if(strlen($listLangStr)>0){
+        return substr($listLangStr, 0, strlen($listLangStr)-strlen($sep));   //serialize ($cityarray); //
+    }
+    else{
+        return "no show";
+        // (for movie->nid: " . $nid . ")"
+    }
+}
+function getHourshow($nid=null, $sep =" "){
+    $query = db_select('node', 'n')
+        ->fields('n', array('nid'))
+        ->condition('n.type', 'shows');
+    $result = $query->execute();
+
+    $listeLang = array();
+    $listLangStr = "";
+    $devList = array();
+    foreach ($result as $row) {
+         if ($node = node_load($row->nid)) {
+             /*if(isset($node->field_eventid['und'])){
+                $devList['eventid'][] = $node->field_eventid['und'];    
+             }     */        
+             if(isset($node->field_eventid['und']) && $node->field_eventid['und'][0]['nid'] == $nid){                        
+                 if ($node->field_saleend['und'][0]['value'] >= date("Y-m-d H:i")){          
+                     //dpm($node);
+                     if(isset($node->field_showtime['und'][0]['value'])){
+                        $newString = $node->field_showtime['und'][0]['value'];
+                        $newString = date("H:i:s", strtotime($newString));
+                        //apresmidi                        
+                        if (date("H:i:s", strtotime('16:30:00')) >= $newString && date("H:i:s", strtotime('03:00:00')) <= $newString ) {
+                          $listeLang['apresmidi'] = 'apresmidi';
+                        }
+                        elseif (date("H:i:s", strtotime('16:30:00')) < $newString && date("H:i:s", strtotime('19:00:00')) >= $newString ) {
+                          $listeLang['findejournee'] = 'findejournee';
+                        }
+                        else {
+                          $listeLang['soir'] = 'soir';
+                        }
+                     }
+                 }
+             }
+        }   
+    }    
+   //dpm($listeLang);
+    foreach ($listeLang as $Lang) {
+        $listLangStr .= $Lang . $sep;
+    }
+     
+    //$movie = node_load($nid); 
+    //dpm($listeLang);
+    if(strlen($listLangStr)>0){
+        return substr($listLangStr, 0, strlen($listLangStr)-strlen($sep));   //serialize ($cityarray); //
+    }
+    else{
+        return "no show";
+        // (for movie->nid: " . $nid . ")"
+    }
+}
+
+function getLangshow($nid=null, $sep =" "){
+    $query = db_select('node', 'n')
+        ->fields('n', array('nid'))
+        ->condition('n.type', 'shows');
+    $result = $query->execute();
+
+    $listeLang = array();
+    $listLangStr = "";
+    $devList = array();
+    foreach ($result as $row) {
+         if ($node = node_load($row->nid)) {
+             /*if(isset($node->field_eventid['und'])){
+                $devList['eventid'][] = $node->field_eventid['und'];    
+             }     */        
+             if(isset($node->field_eventid['und']) && $node->field_eventid['und'][0]['nid'] == $nid){                        
+                 if ($node->field_saleend['und'][0]['value'] >= date("Y-m-d H:i")){          
+                     //dpm($node);
+                     if(isset($node->field_languageversion['und'][0]['value'])){
+                        $newString = strtolower(preg_replace('/[^a-z0-9]/i', '-', $node->field_languageversion['und'][0]['value']));
+                        $newString = str_replace('---', '-', $newString);
+                        $newString = str_replace('--', '-', $newString);
+                        $listeLang[$newString] = $newString;
+                     }
+                 }
+             }
+        }   
+    }    
+   
+    foreach ($listeLang as $Lang) {
+        $listLangStr .= $Lang . $sep;
+    }
+     
+    //$movie = node_load($nid); 
+    //dpm($devList);
+    if(strlen($listLangStr)>0){
+        return substr($listLangStr, 0, strlen($listLangStr)-strlen($sep));   //serialize ($cityarray); //
+    }
+    else{
+        return "no lang";
+        // (for movie->nid: " . $nid . ")"
+    }
+}
+function showImgDolphin ($nid=null, $eventID=null, $start=0, $stop=10, $format="Poster"){
+    $dolpineURL = "http://ticketonline.cinerive.com:11718/1.0/";
+    $urlCompl= "?apikey=c1n3R1v3\$Rex&language=fr";
+    //if(init()){ 
+        $dataArray = array();
+        $images=array(); 
+        if(isset($eventID)){
+            
+            $eventID = substr($eventID, 6);//Events100053
+            $url ="events/" . $eventID ."/images";
+            $map_url = $dolpineURL . $url . $urlCompl;            
+            $datas = getXMLdata($map_url);
+            if($datas==!false){
+                $i=0;
+                $key = 0;                  
+                foreach($datas->children() as $k=>$dataimages){                                      
+                    if($i >= $start && $i<= $stop && $k =="Image"){
+                        if($format == $dataimages['Type']){
+                            $images[$key]['id']=$dataimages['ID'];
+                            $map_url = $dolpineURL . $url ."/" . $dataimages['ID'] . $urlCompl;
+                            $images64 = getXMLdata($map_url);
+                            if($images64==!false){
+                                $images[$key]['imagecode'] = $images64;
+                                $images[$key]['html']= '<img src="data:image/jpg;base64,' . $images64 . '" />';
+                            }    
+                        }  
+                    $key++;                           
+                    }
+                  $i++;                
+                }
+            }
+        }
+        return $images;
+    /*}
+    else{
+        return array();
+    }*/
+}
+
+function getImgDolphin ($nid=null, $eventID=null){
+    $dolpineURL = "http://ticketonline.cinerive.com:11718/1.0/";
+    $urlCompl= "?apikey=c1n3R1v3\$Rex&language=fr"; 
+    //ex: http://ticketonline.cinerive.com:11718/1.0/events/100053/images?apikey=c1n3R1v3$Rex&language=fr
+    // ex2 : http://ticketonline.cinerive.com:11718/1.0/events/100053/images/100101?apikey=c1n3R1v3$Rex&language=fr
+    $testsrt="";
+    $dataArray = array();
+    if(isset($eventID)){
+        
+        $eventID = substr($eventID, 6);//Events100053
+        $url ="events/" . $eventID ."/images";
+        $map_url = $dolpineURL . $url . $urlCompl;
+        //$testsrt.= $map_url . "<br/>";
+        
+        $datas = getXMLdata($map_url);
+        if($datas==!false){
+            foreach($datas->children() as $k=>$images){
+                //$data->image@ID;
+                //$testsrt.= "X: " . $images['ID'] . "<br/>";
+                $map_url = $dolpineURL . $url ."/" . $images['ID'] . $urlCompl;
+                $images64 = getXMLdata($map_url);
+                $dataArray = $images64;
+                //$testsrt.= '<img src="data:image/jpg;base64,' . $images64 . '" />'. "<br/>";
+           }
+        }
+    }
+    //[0]['value']
+    //return $testsrt ;
+    return $dataArray ;
+}
+
+function getXMLdata($map_url =null){
+    $errorlist="";
+        if (($response_xml_data = file_get_contents($map_url))===false){
+            dpm("Error fetching XML");
+            return false;
+        } 
+        else {
+           libxml_use_internal_errors(true);
+           $datas = simplexml_load_string($response_xml_data);
+           if (!$datas) {
+               dpm("Error loading XML");
+               foreach(libxml_get_errors() as $error) {
+                   dpm("\t", $error->message);
+               }
+            return false;   
+           } else {
+              return $datas;
+              
+           }
+        }
+}
